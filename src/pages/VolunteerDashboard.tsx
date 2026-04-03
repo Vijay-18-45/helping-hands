@@ -60,6 +60,8 @@ export default function VolunteerDashboard() {
   const [activeSection, setActiveSection] = useState<'available' | 'requested'>('available');
   const [allDonationsMap, setAllDonationsMap] = useState<Record<string, Donation>>({});
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [deliveredId, setDeliveredId] = useState<string | null>(null);
+  const [freshOnly, setFreshOnly] = useState(false);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -158,7 +160,26 @@ export default function VolunteerDashboard() {
     }
   };
 
-  const availableDonations = donations;
+  const handleDeliver = async (reqId: string, donationTitle: string) => {
+    if (deliveredId) return;
+    setDeliveredId(reqId);
+    try {
+      await update(ref(rtdb, `requests/${reqId}`), {
+        status: 'delivered',
+        deliveredAt: Date.now(),
+      });
+      addToast(`"${donationTitle}" marked as delivered!`, 'success');
+    } catch {
+      addToast('Failed to mark as delivered. Please try again.', 'error');
+    } finally {
+      setDeliveredId(null);
+    }
+  };
+
+  const availableDonations = freshOnly
+    ? donations.filter(d => isFresh(d.timestamp, d.freshness))
+    : donations;
+
   // Pending requests first, accepted ones below
   const requestedItems = [
     ...requests.filter(r => r.status === 'pending').sort((a, b) => a.timestamp - b.timestamp),
@@ -239,7 +260,7 @@ export default function VolunteerDashboard() {
             {[
               { label: 'Available Donations', value: availableDonations.length, color: 'var(--primary)', iconPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z' },
               { label: 'Pending Requests', value: pendingCount, color: 'var(--accent)', iconPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-              { label: 'My Accepted', value: requests.filter(r => r.status === 'accepted' && r.volunteerName === (user?.email?.split('@')[0] ?? '')).length, color: 'var(--success)', iconPath: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z' },
+              { label: 'My Completed', value: requests.filter(r => (r.status === 'accepted' || r.status === 'delivered') && r.volunteerName === (user?.email?.split('@')[0] ?? '')).length, color: 'var(--success)', iconPath: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z' },
             ].map(s => (
               <div key={s.label} className="card" style={{ padding: 24 }}>
                 <span style={{ width: 44, height: 44, background: `${s.color}15`, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, marginBottom: 12 }}>
@@ -254,10 +275,30 @@ export default function VolunteerDashboard() {
 
         {activeSection === 'available' ? (
           <section id="donations">
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
-              Available Donations
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+                Available Donations
+                {!loading && (
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--on-surface-variant)' }}>
+                    ({availableDonations.length}{freshOnly ? ` of ${donations.length}` : ''})
+                  </span>
+                )}
+              </h2>
+              <button
+                onClick={() => setFreshOnly(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px',
+                  borderRadius: 99, border: `1.5px solid ${freshOnly ? 'var(--success)' : 'var(--outline-variant)'}`,
+                  background: freshOnly ? 'var(--success-soft)' : 'transparent',
+                  color: freshOnly ? 'var(--success)' : 'var(--on-surface-variant)',
+                  fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', transition: 'all 0.2s',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                {freshOnly ? 'Fresh Only (on)' : 'Fresh Only'}
+              </button>
+            </div>
 
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16, color: 'var(--on-surface-variant)' }}>
@@ -353,10 +394,13 @@ export default function VolunteerDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
                 {requestedItems.map((req) => {
                   const isAccepted = req.status === 'accepted';
+                  const isDelivered = req.status === 'delivered';
                   const isRejected = req.status === 'rejected';
                   const isPending = req.status === 'pending';
+                  const myVolunteerName = user?.email?.split('@')[0] ?? '';
+                  const isMyAccepted = isAccepted && req.volunteerName === myVolunteerName;
                   const firstNonPending = !isPending && requestedItems.filter(r => r.status !== 'pending').indexOf(req) === 0 && pendingCount > 0;
-                  const cardBorder = isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)';
+                  const cardBorder = isDelivered ? '#7c3aed' : isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)';
                   return (
                     <div key={req.id}>
                     {firstNonPending && (
@@ -376,11 +420,31 @@ export default function VolunteerDashboard() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
                           <span style={{
                             padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
-                            background: isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
-                            color: isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
+                            background: isDelivered ? '#f3e8ff' : isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
+                            color: isDelivered ? '#7c3aed' : isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
                           }}>
-                            {isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
+                            {isDelivered ? '✓ DELIVERED' : isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
                           </span>
+                          {isMyAccepted && (
+                            <button
+                              onClick={() => handleDeliver(req.id, req.donation?.title ?? 'donation')}
+                              disabled={deliveredId === req.id}
+                              style={{
+                                padding: '6px 14px', borderRadius: 99, border: 'none',
+                                background: '#7c3aed', color: 'white',
+                                fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                opacity: deliveredId === req.id ? 0.7 : 1,
+                                boxShadow: '0 2px 8px rgba(124,58,237,0.35)',
+                              }}
+                            >
+                              {deliveredId === req.id ? (
+                                <><span style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Marking...</>
+                              ) : (
+                                <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5s-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8z"/></svg>Mark Delivered</>
+                              )}
+                            </button>
+                          )}
                           {isPending && (
                             <button
                               onClick={() => handleAccept(req)}

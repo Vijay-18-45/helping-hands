@@ -67,6 +67,7 @@ export default function RequestorDashboard() {
   const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
   const [acceptedNotification, setAcceptedNotification] = useState<MyRequest | null>(null);
   const [donationsMap, setDonationsMap] = useState<Record<string, Donation>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Track previous statuses to detect changes in real-time
   const prevStatuses = useRef<Record<string, string>>({});
@@ -211,8 +212,14 @@ export default function RequestorDashboard() {
 
   const acceptedCount = myRequests.filter(r => r.status === 'accepted').length;
   const pendingCount = myRequests.filter(r => r.status === 'pending').length;
-  // Set of donationIds the user has already requested (any status)
   const requestedDonationIds = new Set(myRequests.map(r => r.donationId));
+
+  const filteredDonations = searchQuery.trim()
+    ? donations.filter(d =>
+        d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : donations;
 
   return (
     <div className="dashboard-layout">
@@ -401,10 +408,38 @@ export default function RequestorDashboard() {
 
         {activeSection === 'available' ? (
           <section style={{ marginTop: 24 }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
-              Available Donations
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+                Available Donations
+                {!loading && donations.length > 0 && (
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--on-surface-variant)' }}>
+                    ({filteredDonations.length}{searchQuery ? ` of ${donations.length}` : ''})
+                  </span>
+                )}
+              </h2>
+              {!loading && donations.length > 0 && (
+                <div style={{ position: 'relative', minWidth: 240 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--on-surface-variant)"
+                    style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                  </svg>
+                  <input
+                    className="form-input"
+                    placeholder="Search by name or description…"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    style={{ paddingLeft: 36, paddingRight: searchQuery ? 36 : 12 }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--on-surface-variant)', fontSize: 18, lineHeight: 1, padding: 0 }}>
+                      ×
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16, color: 'var(--on-surface-variant)' }}>
@@ -419,9 +454,16 @@ export default function RequestorDashboard() {
                 <div style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: 8 }}>No donations available</div>
                 <div style={{ fontSize: '0.9375rem', color: 'var(--on-surface-variant)' }}>Check back soon — donors are adding new items regularly.</div>
               </div>
+            ) : filteredDonations.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: '56px 48px' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🔍</div>
+                <div style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: 8 }}>No results for "{searchQuery}"</div>
+                <div style={{ fontSize: '0.9375rem', color: 'var(--on-surface-variant)', marginBottom: 20 }}>Try a different keyword or clear the search to see all donations.</div>
+                <button onClick={() => setSearchQuery('')} className="btn btn-secondary">Clear Search</button>
+              </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-                {donations.map(donation => {
+                {filteredDonations.map(donation => {
                   const fresh = isFresh(donation.timestamp, donation.freshness);
                   const remaining = timeRemaining(donation.timestamp, donation.freshness);
                   return (
@@ -502,10 +544,28 @@ export default function RequestorDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {myRequests.map((req) => {
                   const isAccepted = req.status === 'accepted';
+                  const isDelivered = req.status === 'delivered';
                   const isRejected = req.status === 'rejected';
-                  const borderColor = isAccepted ? 'var(--success)' : isRejected ? 'var(--accent)' : 'var(--primary)';
+                  const borderColor = isDelivered ? '#7c3aed' : isAccepted ? 'var(--success)' : isRejected ? 'var(--accent)' : 'var(--primary)';
                   return (
                     <div key={req.id} className="card" style={{ borderLeft: `4px solid ${borderColor}`, padding: '20px 24px' }}>
+                      {isDelivered && (
+                        <div style={{ padding: '12px 16px', background: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5s-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8z"/></svg>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#5b21b6', fontSize: '0.9375rem' }}>
+                              Your food has been delivered!
+                            </div>
+                            {req.volunteerName && (
+                              <div style={{ color: '#5b21b6', fontSize: '0.8125rem', marginTop: 2 }}>
+                                <strong>{req.volunteerName}</strong> completed this delivery. Thank you for using Helping Hands!
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {isAccepted && (
                         <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#00a65a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -548,11 +608,11 @@ export default function RequestorDashboard() {
                         </div>
                         <span style={{
                           padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
-                          background: isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
-                          color: isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
+                          background: isDelivered ? '#f3e8ff' : isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
+                          color: isDelivered ? '#7c3aed' : isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
                           flexShrink: 0, marginLeft: 12,
                         }}>
-                          {isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
+                          {isDelivered ? '✓ DELIVERED' : isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
                         </span>
                       </div>
                       {donationsMap[req.donationId]?.quantity && (
