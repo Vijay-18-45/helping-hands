@@ -109,7 +109,7 @@ export default function LandingPage() {
         }} />
 
         <div className="container section" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+          <div className="hero-grid">
             {/* Left */}
             <ScrollReveal animation="fade-up" duration={0.8}>
               <div className="chip" style={{ marginBottom: '24px' }}>
@@ -182,7 +182,7 @@ export default function LandingPage() {
               </div>
 
               {/* Floating stats card */}
-              <ScrollReveal animation="fade-right" delay={0.4} style={{
+              <ScrollReveal animation="fade-right" delay={0.4} className="hero-float-card" style={{
                 position: 'absolute', bottom: -40, left: -40,
               }}>
                 <div className="card-glass" style={{
@@ -207,7 +207,7 @@ export default function LandingPage() {
               </ScrollReveal>
 
               {/* Live indicator */}
-              <ScrollReveal animation="fade-left" delay={0.5} style={{
+              <ScrollReveal animation="fade-left" delay={0.5} className="hero-float-card" style={{
                 position: 'absolute', top: 20, right: -20,
               }}>
                 <div className="card" style={{
@@ -238,11 +238,11 @@ export default function LandingPage() {
       }}>
         <div className="container" style={{ padding: '0 48px' }}>
           <ScrollReveal animation="fade">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="trusted-by-row">
               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Trusted by leading organizations
               </span>
-              <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
+              <div className="trusted-by-logos">
                 {['UNICEF', 'Red Cross', 'WHO', 'World Food', 'Care India'].map(org => (
                   <span key={org} style={{ 
                     fontFamily: 'Manrope, sans-serif', 
@@ -273,7 +273,7 @@ export default function LandingPage() {
             </div>
           </ScrollReveal>
 
-          <StaggerContainer staggerDelay={0.15} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+          <StaggerContainer staggerDelay={0.15} className="giving-grid">
             {givingCards.map((card) => (
               <div key={card.title}>
                 <div className="card" style={{
@@ -341,7 +341,7 @@ export default function LandingPage() {
       {/* Impact Projects */}
       <section className="section" style={{ background: 'var(--surface-container-low)' }} id="impact">
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '80px', alignItems: 'center' }}>
+          <div className="impact-grid">
             <ScrollReveal animation="fade-right">
               <div className="chip" style={{ marginBottom: '20px' }}>Live Projects</div>
               <h2 style={{ marginBottom: '24px' }}>
@@ -422,7 +422,7 @@ export default function LandingPage() {
             </div>
           </ScrollReveal>
 
-          <StaggerContainer staggerDelay={0.15} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', maxWidth: 900, margin: '0 auto' }}>
+          <StaggerContainer staggerDelay={0.15} className="testimonials-grid">
             {testimonials.map((t) => (
               <div key={t.name} className="card" style={{ 
                 padding: '32px',
@@ -450,14 +450,7 @@ export default function LandingPage() {
 
       {/* CTA Banner */}
       <ScrollReveal animation="fade-up">
-        <section style={{
-          background: 'var(--grad-dark)',
-          padding: '100px 48px',
-          textAlign: 'center',
-          color: '#fff',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
+        <section className="cta-section">
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',

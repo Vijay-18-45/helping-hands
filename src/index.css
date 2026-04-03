@@ -971,17 +971,6 @@ input, textarea, select {
   .section, .section-sm { padding: 72px 32px; }
 }
 
-@media (max-width: 768px) {
-  .navbar { padding: 0 20px; }
-  .navbar-links { display: none; }
-  .section, .section-sm { padding: 56px 20px; }
-  .dashboard-content { margin-left: 0; padding: 24px 20px; }
-  .sidebar { display: none; }
-  
-  h1 { font-size: 2.25rem; }
-  h2 { font-size: 1.75rem; }
-}
-
 /* ─── Modern SaaS Utilities ──────────────────────────────────────── */
 
 /* Gradient text */
@@ -1274,6 +1263,193 @@ input, textarea, select {
   backface-visibility: hidden;
 }
 
+/* ─── Responsive Layout Grid Classes ───────────────────────────────── */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  position: relative;
+}
+
+.giving-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.impact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.trusted-by-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.trusted-by-logos {
+  display: flex;
+  gap: 48px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Mobile Hamburger Button ───────────────────────────────────────── */
+.mobile-menu-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+  background: var(--surface-container-low);
+}
+
+.mobile-menu-btn span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--on-surface);
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform-origin: center;
+}
+
+.mobile-menu-btn.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.mobile-menu-btn.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.mobile-menu-btn.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ─── Mobile Nav Overlay ────────────────────────────────────────────── */
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.4);
+  z-index: 150;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
+}
+
+.mobile-nav-overlay.open {
+  opacity: 1;
+}
+
+/* ─── Mobile Nav Drawer ─────────────────────────────────────────────── */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 85vw);
+  background: var(--surface-container-lowest);
+  z-index: 200;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: var(--shadow-2xl);
+  overflow-y: auto;
+}
+
+.mobile-nav.open {
+  transform: translateX(0);
+}
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.mobile-nav-close {
+  background: var(--surface-container-low);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-close:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px;
+  gap: 4px;
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  background: var(--primary-fixed);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.mobile-nav-actions {
+  padding: 16px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+
 /* Disable parallax and heavy animations on mobile */
 @media (max-width: 768px) {
   .parallax-bg {
@@ -1285,6 +1461,206 @@ input, textarea, select {
   .reveal-right,
   .reveal-scale {
     transition-duration: 0.5s;
+  }
+}
+
+/* ─── Mobile Responsive Breakpoints ────────────────────────────────── */
+@media (max-width: 1024px) {
+  .hero-grid {
+    gap: 48px;
+  }
+  .impact-grid {
+    gap: 48px;
+  }
+  .giving-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .trusted-by-logos {
+    gap: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Navbar */
+  .navbar {
+    padding: 0 20px;
+  }
+  .navbar-links {
+    display: none;
+  }
+  .navbar-actions {
+    display: none;
+  }
+  .mobile-menu-btn {
+    display: flex;
+  }
+  .mobile-nav-overlay,
+  .mobile-nav {
+    display: flex;
+  }
+
+  /* Hero */
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .hero-float-card {
+    display: none !important;
+  }
+
+  /* Grids */
+  .giving-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .impact-grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  /* Trusted by */
+  .trusted-by-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .trusted-by-logos {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* Sections */
+  .section,
+  .section-sm {
+    padding: 56px 20px;
+  }
+
+  /* Dashboard */
+  .dashboard-content {
+    margin-left: 0;
+    padding: 24px 16px;
+  }
+  .sidebar {
+    display: none;
+  }
+
+  /* Typography */
+  h1 { font-size: 2.25rem; }
+  h2 { font-size: 1.75rem; }
+}
+
+@media (max-width: 480px) {
+  .hero-grid {
+    gap: 32px;
+  }
+  .section,
+  .section-sm {
+    padding: 48px 16px;
+  }
+  .btn-lg {
+    padding: 14px 24px;
+    font-size: 0.9375rem;
+  }
+  .giving-grid {
+    grid-template-columns: 1fr;
+  }
+  .trusted-by-logos {
+    gap: 16px;
+  }
+  .dashboard-content {
+    padding: 20px 12px;
+  }
+  .card-elevated {
+    padding: 20px;
+  }
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────── */
+.site-footer {
+  background: var(--surface-container-lowest);
+  border-top: 1px solid rgba(23, 43, 77, 0.06);
+  padding: 80px 48px 40px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  gap: 48px;
+  margin-bottom: 64px;
+}
+
+.footer-bottom {
+  padding-top: 32px;
+  border-top: 1px solid rgba(23, 43, 77, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* ─── CTA Section ────────────────────────────────────────────────── */
+.cta-section {
+  background: var(--grad-dark);
+  padding: 100px 48px;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 40px;
+  }
+  .site-footer {
+    padding: 64px 32px 32px;
+  }
+  .cta-section {
+    padding: 80px 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .footer-grid > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .site-footer {
+    padding: 56px 20px 32px;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .cta-section {
+    padding: 64px 20px;
+  }
+  .cta-section h2 {
+    font-size: 2rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .footer-grid > div:first-child {
+    grid-column: auto;
+  }
+  .cta-section {
+    padding: 48px 16px;
   }
 }
 

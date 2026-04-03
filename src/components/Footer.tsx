@@ -2,13 +2,9 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer style={{
-      background: 'var(--surface-container-lowest)',
-      borderTop: '1px solid rgba(23,43,77,0.06)',
-      padding: '80px 48px 40px',
-    }}>
+    <footer className="site-footer">
       <div className="container">
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr', gap: '48px', marginBottom: '64px' }}>
+        <div className="footer-grid">
           {/* Brand */}
           <div>
             <Link to="/" style={{
@@ -137,11 +133,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div style={{
-          paddingTop: '32px',
-          borderTop: '1px solid rgba(23,43,77,0.08)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
+        <div className="footer-bottom">
           <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>
             © 2024 Helping Hands. Made for communities worldwide.
           </p>
