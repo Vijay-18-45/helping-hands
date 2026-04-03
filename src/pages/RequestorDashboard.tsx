@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Toast, useToast } from '../components/Toast';
 import MapPicker from '../components/MapPicker';
 import LocationViewer from '../components/LocationViewer';
+import DatabaseSetupBanner from '../components/DatabaseSetupBanner';
 
 interface Donation {
   id: string;
@@ -244,6 +245,8 @@ export default function RequestorDashboard() {
             <Link to="/" className="btn btn-secondary btn-sm">Back to Home</Link>
           </div>
         </header>
+
+        <DatabaseSetupBanner />
 
         {activeSection === 'available' ? (
           <section>

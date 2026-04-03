@@ -11,6 +11,10 @@ const RULES = `{
     "donations": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "requests": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }`;
