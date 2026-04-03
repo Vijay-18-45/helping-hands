@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import Footer from '../components/Footer';
-import { loginUser, getUserProfile, getFirebaseErrorMessage } from '../authService';
+import { loginUser, getUserRole, sendVerificationEmail, sendPasswordReset, getFirebaseErrorMessage } from '../authService';
 
 export default function VolunteerLogin() {
   const navigate = useNavigate();
@@ -32,25 +32,27 @@ export default function VolunteerLogin() {
     setLoading(true);
     
     try {
-      // Login with Firebase
       const userCredential = await loginUser(email, password);
-      
-      // Check if user is a volunteer
-      const { role } = await getUserProfile(userCredential.user.uid);
-      
+
+      if (!userCredential.user.emailVerified) {
+        setLoading(false);
+        setError('Please verify your email before logging in. Check your inbox for a verification link.');
+        return;
+      }
+
+      const role = await getUserRole(userCredential.user.uid);
+
       if (role !== 'volunteer') {
         setError('This account is not registered as a volunteer. Please use the donor login.');
         setLoading(false);
         return;
       }
-      
-      // Success - redirect to volunteer dashboard
+
       setLoading(false);
       navigate('/volunteer/dashboard');
     } catch (error: any) {
       setLoading(false);
-      const errorMessage = getFirebaseErrorMessage(error.code);
-      setError(errorMessage);
+      setError(getFirebaseErrorMessage(error.code));
     }
   };
 

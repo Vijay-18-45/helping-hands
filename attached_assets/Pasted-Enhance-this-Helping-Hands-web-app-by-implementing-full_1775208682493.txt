@@ -1,0 +1,152 @@
+Enhance this Helping Hands web app by implementing full Firebase Authentication, email verification, role-based dashboards, and Realtime Database integration.
+
+-----------------------------------
+🔥 FIREBASE SETUP
+-----------------------------------
+Use the following Firebase config:
+
+import { initializeApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from "firebase/auth";
+import { getDatabase, ref, set, push, onValue } from "firebase/database";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBK0Ujvovr9-mR4O3o5Khfc9EzNhYmtfiQ",
+  authDomain: "helping-hands-7f9b6.firebaseapp.com",
+  databaseURL: "https://helping-hands-7f9b6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "helping-hands-7f9b6",
+  storageBucket: "helping-hands-7f9b6.firebasestorage.app",
+  messagingSenderId: "305960373322",
+  appId: "1:305960373322:web:5636a826ce7216bacd2ab3",
+  measurementId: "G-JGM2Q07W7E"
+};
+
+Initialize:
+- Firebase App
+- Auth
+- Realtime Database
+
+-----------------------------------
+👤 USER ROLES
+-----------------------------------
+Support two roles:
+1. Donor
+2. Volunteer
+
+Store role in database:
+users/{uid} → { email, role }
+
+-----------------------------------
+🔐 AUTHENTICATION FLOW
+-----------------------------------
+
+1. SIGNUP (Donor / Volunteer)
+- Inputs: email, password, role selector
+- Create user using Firebase Auth
+- Save user role in database
+- Send email verification using:
+  sendEmailVerification(user)
+
+- After signup:
+  Show message:
+  "Account created successfully. Please verify your email before logging in."
+
+2. LOGIN
+- Allow login only if emailVerified == true
+- If not verified:
+  Show:
+  "Please verify your email before logging in."
+
+3. AUTH STATE HANDLING
+- Use onAuthStateChanged
+- Redirect:
+  Donor → Donor Dashboard
+  Volunteer → Volunteer Dashboard
+
+-----------------------------------
+📩 EMAIL VERIFICATION LOGIC
+-----------------------------------
+- Automatically send verification email after signup
+- Block login until verified
+- Show UI banner:
+  "Verification email sent. Check your inbox."
+
+-----------------------------------
+📊 DONOR DASHBOARD
+-----------------------------------
+
+After donor login:
+- Show "Create Donation" form with fields:
+  - Food Title
+  - Description
+  - Quantity
+  - Freshness (in hours)
+  - Upload Image (store as base64 or URL)
+
+On submit:
+- Save to Realtime DB:
+  donations/{donationId} → {
+    donorId,
+    title,
+    description,
+    quantity,
+    freshness,
+    image,
+    timestamp
+  }
+
+-----------------------------------
+🤝 VOLUNTEER DASHBOARD
+-----------------------------------
+
+After volunteer login:
+- Fetch donations from database using onValue
+- Display list of donations:
+  - Food image
+  - Title
+  - Description
+  - Quantity
+  - Freshness indicator
+
+-----------------------------------
+🧠 FRESHNESS CHECK LOGIC
+-----------------------------------
+
+- Based on timestamp + freshness hours:
+  If expired:
+    Show "Expired"
+  Else:
+    Show "Fresh"
+
+-----------------------------------
+🎨 UI REQUIREMENTS
+-----------------------------------
+
+- Clean modern UI
+- Cards for donations
+- Dashboard layout
+- Toast notifications for:
+  - Signup success
+  - Email verification sent
+  - Login errors
+- Empty states:
+  - "No donations available"
+
+-----------------------------------
+⚙️ EXTRA REQUIREMENTS
+-----------------------------------
+
+- Protect routes (only logged-in users)
+- Logout button
+- Loading states
+- Error handling for auth
+
+-----------------------------------
+🎯 FINAL OUTPUT EXPECTATION
+-----------------------------------
+
+- Fully working Firebase Auth system
+- Email verification enforced
+- Donor → can submit donation
+- Volunteer → can view donations with images + freshness
+- Data synced via Realtime Database
+- Clean structured React components

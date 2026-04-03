@@ -2,7 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { registerVolunteer, getFirebaseErrorMessage } from '../authService';
+import { registerUser, getFirebaseErrorMessage } from '../authService';
 
 const steps = ['Identity', 'Availability', 'Specialization'];
 
@@ -11,7 +11,7 @@ export default function VolunteerRegister() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    city: '', bio: '',
+    password: '', city: '', bio: '',
     days: [] as string[],
     hours: '',
     skills: [] as string[],
@@ -67,22 +67,11 @@ export default function VolunteerRegister() {
       setSubmitError('');
       
       try {
-        // Create a temporary password (you can modify this to ask for password in the form)
-        const tempPassword = 'volunteer@' + Math.random().toString(36).slice(-8);
-        
-        // Register volunteer with Firebase
-        await registerVolunteer(form.email, tempPassword, {
-          firstName: form.firstName,
-          lastName: form.lastName,
-          phone: form.phone || '',
-          city: form.city,
-          bio: form.bio,
-          days: form.days,
-          hours: form.hours,
-          skills: form.skills,
-          foodService: form.foodService || 'Not specified',
-        });
-        
+        if (!form.password || form.password.length < 6) {
+          alert('Please enter a password of at least 6 characters.');
+          return;
+        }
+        await registerUser(form.email, form.password, 'volunteer');
         setSubmitted(true);
         setTimeout(() => navigate('/volunteer/login'), 3000);
       } catch (error: any) {
@@ -302,6 +291,10 @@ export default function VolunteerRegister() {
                   <div className="form-group" style={{ marginBottom: '20px' }}>
                     <label className="form-label" htmlFor="city">City / Area</label>
                     <input id="city" className="form-input" placeholder="Mumbai, Maharashtra" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label className="form-label" htmlFor="vol-password">Password *</label>
+                    <input id="vol-password" type="password" className="form-input" placeholder="At least 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="bio">Brief Bio (optional)</label>

@@ -1,5 +1,5 @@
-import { 
-  createUserWithEmailAndPassword, 
+import {
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   sendEmailVerification,
@@ -7,149 +7,51 @@ import {
   type User,
   type UserCredential
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebaseConfig';
+import { ref, set, get } from 'firebase/database';
+import { auth, rtdb } from './firebaseConfig';
 
 export type UserRole = 'donor' | 'volunteer';
 
-export interface DonorProfile {
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  role: 'donor';
-  createdAt: any;
-}
-
-export interface VolunteerProfile {
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  city: string;
-  bio?: string;
-  days: string[];
-  hours: string;
-  skills: string[];
-  foodService: string;
-  role: 'volunteer';
-  createdAt: any;
-}
-
-export const registerDonor = async (
+export const registerUser = async (
   email: string,
   password: string,
-  profile: Omit<DonorProfile, 'email' | 'role' | 'createdAt'>
+  role: UserRole
 ): Promise<UserCredential> => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, 'donors', userCredential.user.uid), {
-      ...profile,
-      email,
-      role: 'donor',
-      createdAt: serverTimestamp(),
-    });
-    return userCredential;
-  } catch (error: any) {
-    console.error('Error registering donor:', error);
-    throw error;
-  }
-};
-
-export const registerVolunteer = async (
-  email: string,
-  password: string,
-  profile: Omit<VolunteerProfile, 'email' | 'role' | 'createdAt'>
-): Promise<UserCredential> => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, 'volunteers', userCredential.user.uid), {
-      ...profile,
-      email,
-      role: 'volunteer',
-      createdAt: serverTimestamp(),
-    });
-    return userCredential;
-  } catch (error: any) {
-    console.error('Error registering volunteer:', error);
-    throw error;
-  }
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  await set(ref(rtdb, `users/${userCredential.user.uid}`), { email, role });
+  await sendEmailVerification(userCredential.user);
+  return userCredential;
 };
 
 export const loginUser = async (
   email: string,
   password: string
 ): Promise<UserCredential> => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential;
-  } catch (error: any) {
-    console.error('Error logging in:', error);
-    throw error;
-  }
+  return signInWithEmailAndPassword(auth, email, password);
 };
 
 export const logoutUser = async (): Promise<void> => {
-  try {
-    await signOut(auth);
-  } catch (error: any) {
-    console.error('Error logging out:', error);
-    throw error;
+  return signOut(auth);
+};
+
+export const getUserRole = async (uid: string): Promise<UserRole | null> => {
+  const snap = await get(ref(rtdb, `users/${uid}`));
+  if (snap.exists()) {
+    return snap.val().role as UserRole;
   }
+  return null;
 };
 
-export const getUserProfile = async (
-  uid: string
-): Promise<{ data: DonorProfile | VolunteerProfile | null; role: UserRole | null }> => {
-  try {
-    const donorDoc = await getDoc(doc(db, 'donors', uid));
-    if (donorDoc.exists()) {
-      return { data: donorDoc.data() as DonorProfile, role: 'donor' };
-    }
-    const volunteerDoc = await getDoc(doc(db, 'volunteers', uid));
-    if (volunteerDoc.exists()) {
-      return { data: volunteerDoc.data() as VolunteerProfile, role: 'volunteer' };
-    }
-    return { data: null, role: null };
-  } catch (error: any) {
-    console.error('Error fetching user profile:', error);
-    throw error;
-  }
-};
+export const getCurrentUser = (): User | null => auth.currentUser;
 
-export const getCurrentUser = (): User | null => {
-  return auth.currentUser;
-};
-
-// Send email verification
 export const sendVerificationEmail = async (): Promise<void> => {
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error('No user logged in');
-  }
-  
-  try {
-    await sendEmailVerification(user);
-  } catch (error: any) {
-    console.error('Error sending verification email:', error);
-    throw error;
-  }
+  if (!user) throw new Error('No user logged in');
+  await sendEmailVerification(user);
 };
 
-// Send password reset email
 export const sendPasswordReset = async (email: string): Promise<void> => {
-  try {
-    await sendPasswordResetEmail(auth, email);
-  } catch (error: any) {
-    console.error('Error sending password reset email:', error);
-    throw error;
-  }
-};
-
-// Check if email is verified
-export const isEmailVerified = (): boolean => {
-  const user = auth.currentUser;
-  return user ? user.emailVerified : false;
+  await sendPasswordResetEmail(auth, email);
 };
 
 export const getFirebaseErrorMessage = (errorCode: string): string => {

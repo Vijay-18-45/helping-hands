@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { loginUser, getUserProfile, isEmailVerified, sendPasswordReset, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
+import { loginUser, getUserRole, sendPasswordReset, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
 
 export default function DonorLogin() {
   const navigate = useNavigate();
@@ -42,10 +42,8 @@ export default function DonorLogin() {
         return;
       }
       
-      // Check if user is a donor
-      const { role, data } = await getUserProfile(userCredential.user.uid);
-      console.log('✅ Profile fetched, role:', role);
-      
+      const role = await getUserRole(userCredential.user.uid);
+
       if (role !== 'donor') {
         setError('This account is not registered as a donor. Please use the volunteer login.');
         setLoading(false);
