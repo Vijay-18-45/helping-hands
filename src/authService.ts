@@ -12,13 +12,32 @@ import { auth, rtdb } from './firebaseConfig';
 
 export type UserRole = 'donor' | 'volunteer';
 
+export const RTDB_PERMISSION_ERROR = 'rtdb/permission-denied';
+
+function isPermissionDenied(err: any): boolean {
+  return (
+    err?.message?.toLowerCase().includes('permission') ||
+    err?.code === 'PERMISSION_DENIED' ||
+    String(err).toLowerCase().includes('permission_denied')
+  );
+}
+
 export const registerUser = async (
   email: string,
   password: string,
   role: UserRole
 ): Promise<UserCredential> => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await set(ref(rtdb, `users/${userCredential.user.uid}`), { email, role });
+  try {
+    await set(ref(rtdb, `users/${userCredential.user.uid}`), { email, role });
+  } catch (err: any) {
+    if (isPermissionDenied(err)) {
+      const e = new Error('Firebase Database rules are blocking writes. Please update your Realtime Database rules in the Firebase Console to allow authenticated reads and writes.');
+      (e as any).code = RTDB_PERMISSION_ERROR;
+      throw e;
+    }
+    throw err;
+  }
   await sendEmailVerification(userCredential.user);
   return userCredential;
 };
@@ -35,11 +54,19 @@ export const logoutUser = async (): Promise<void> => {
 };
 
 export const getUserRole = async (uid: string): Promise<UserRole | null> => {
-  const snap = await get(ref(rtdb, `users/${uid}`));
-  if (snap.exists()) {
-    return snap.val().role as UserRole;
+  try {
+    const snap = await get(ref(rtdb, `users/${uid}`));
+    if (snap.exists()) {
+      return snap.val().role as UserRole;
+    }
+    return null;
+  } catch (err: any) {
+    if (isPermissionDenied(err)) {
+      console.warn('Firebase RTDB permission denied when reading user role. Check your Realtime Database rules.');
+      return null;
+    }
+    throw err;
   }
-  return null;
 };
 
 export const getCurrentUser = (): User | null => auth.currentUser;
@@ -66,6 +93,7 @@ export const getFirebaseErrorMessage = (errorCode: string): string => {
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/too-many-requests': 'Too many failed attempts. Try again later.',
     'auth/network-request-failed': 'Network error. Check your connection.',
+    [RTDB_PERMISSION_ERROR]: 'Firebase Database rules need to be configured. See the setup guide below.',
   };
   return errorMessages[errorCode] || 'An error occurred. Please try again.';
 };
