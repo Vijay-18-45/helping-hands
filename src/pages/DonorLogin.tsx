@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { loginUser, getUserRole, sendPasswordReset, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
+import { loginUser, getUserRole, logoutUser, sendPasswordReset, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
 import { useAuth } from '../context/AuthContext';
 
 export default function DonorLogin() {
@@ -54,6 +54,7 @@ export default function DonorLogin() {
       const role = await getUserRole(userCredential.user.uid);
 
       if (role !== 'donor') {
+        await logoutUser();
         setError('This account is not registered as a donor. Please use the volunteer login.');
         setLoading(false);
         return;

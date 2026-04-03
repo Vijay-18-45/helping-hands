@@ -4,6 +4,7 @@ import {
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  deleteUser,
   type User,
   type UserCredential
 } from 'firebase/auth';
@@ -31,8 +32,9 @@ export const registerUser = async (
   try {
     await set(ref(rtdb, `users/${userCredential.user.uid}`), { email, role });
   } catch (err: any) {
+    await deleteUser(userCredential.user).catch(() => {});
     if (isPermissionDenied(err)) {
-      const e = new Error('Firebase Database rules are blocking writes. Please update your Realtime Database rules in the Firebase Console to allow authenticated reads and writes.');
+      const e = new Error('Firebase Database rules are blocking writes. Please update your Realtime Database rules in the Firebase Console.');
       (e as any).code = RTDB_PERMISSION_ERROR;
       throw e;
     }
@@ -93,7 +95,7 @@ export const getFirebaseErrorMessage = (errorCode: string): string => {
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/too-many-requests': 'Too many failed attempts. Try again later.',
     'auth/network-request-failed': 'Network error. Check your connection.',
-    [RTDB_PERMISSION_ERROR]: 'Firebase Database rules need to be configured. See the setup guide below.',
+    [RTDB_PERMISSION_ERROR]: 'Database configuration error. Please contact support.',
   };
   return errorMessages[errorCode] || 'An error occurred. Please try again.';
 };

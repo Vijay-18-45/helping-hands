@@ -22,14 +22,18 @@ export default function Navbar({ transparent }: NavbarProps) {
 
   const isActive = (path: string) => location.pathname === path ? 'active' : '';
 
-  const dashboardPath = role === 'donor' ? '/donor/dashboard' : '/volunteer/dashboard';
+  const dashboardPath = role === 'donor'
+    ? '/donor/dashboard'
+    : role === 'volunteer'
+      ? '/volunteer/dashboard'
+      : null;
 
   const handleLogout = async () => {
     await logoutUser();
     navigate('/');
   };
 
-  const isLoggedIn = !loading && user && user.emailVerified;
+  const isLoggedIn = !loading && user && user.emailVerified && role !== null;
 
   return (
     <nav
@@ -49,7 +53,7 @@ export default function Navbar({ transparent }: NavbarProps) {
       </ul>
 
       <div className="navbar-actions">
-        {isLoggedIn ? (
+        {isLoggedIn && dashboardPath ? (
           <>
             <Link to={dashboardPath} className="btn btn-ghost btn-sm">
               My Dashboard
@@ -58,12 +62,12 @@ export default function Navbar({ transparent }: NavbarProps) {
               Logout
             </button>
           </>
-        ) : (
+        ) : !loading ? (
           <>
             <Link to="/donor/login" className="btn btn-ghost btn-sm">Donor Login</Link>
             <Link to="/volunteer/login" className="btn btn-primary btn-sm">Get Started</Link>
           </>
-        )}
+        ) : null}
       </div>
 
       <button
