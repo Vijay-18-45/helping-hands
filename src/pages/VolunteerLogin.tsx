@@ -1,10 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Footer from '../components/Footer';
 import { loginUser, getUserRole, sendVerificationEmail, sendPasswordReset, getFirebaseErrorMessage } from '../authService';
+import { useAuth } from '../context/AuthContext';
 
 export default function VolunteerLogin() {
   const navigate = useNavigate();
+  const { user, role, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user && user.emailVerified && role === 'volunteer') {
+      navigate('/volunteer/dashboard', { replace: true });
+    }
+  }, [user, role, authLoading, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

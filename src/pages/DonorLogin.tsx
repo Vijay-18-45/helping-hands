@@ -1,9 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loginUser, getUserRole, sendPasswordReset, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
+import { useAuth } from '../context/AuthContext';
 
 export default function DonorLogin() {
   const navigate = useNavigate();
+  const { user, role, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user && user.emailVerified && role === 'donor') {
+      navigate('/donor/dashboard', { replace: true });
+    }
+  }, [user, role, authLoading, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

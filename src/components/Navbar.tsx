@@ -1,5 +1,7 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { logoutUser } from '../authService';
 
 interface NavbarProps {
   transparent?: boolean;
@@ -7,22 +9,31 @@ interface NavbarProps {
 
 export default function Navbar({ transparent }: NavbarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const isActive = (path: string) => location.pathname === path ? 'active' : '';
 
+  const dashboardPath = role === 'donor' ? '/donor/dashboard' : '/volunteer/dashboard';
+
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate('/');
+  };
+
+  const isLoggedIn = !loading && user && user.emailVerified;
+
   return (
-    <nav 
-      className={`navbar ${scrolled ? 'scrolled' : ''}`} 
+    <nav
+      className={`navbar ${scrolled ? 'scrolled' : ''}`}
       style={transparent && !scrolled ? { background: 'transparent', borderBottom: 'none' } : {}}
     >
       <Link to="/" className="navbar-brand">
@@ -38,11 +49,23 @@ export default function Navbar({ transparent }: NavbarProps) {
       </ul>
 
       <div className="navbar-actions">
-        <Link to="/donor/login" className="btn btn-ghost btn-sm">Donor Login</Link>
-        <Link to="/volunteer/login" className="btn btn-primary btn-sm">Get Started</Link>
+        {isLoggedIn ? (
+          <>
+            <Link to={dashboardPath} className="btn btn-ghost btn-sm">
+              My Dashboard
+            </Link>
+            <button onClick={handleLogout} className="btn btn-primary btn-sm">
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/donor/login" className="btn btn-ghost btn-sm">Donor Login</Link>
+            <Link to="/volunteer/login" className="btn btn-primary btn-sm">Get Started</Link>
+          </>
+        )}
       </div>
 
-      {/* Mobile menu toggle */}
       <button
         className="mobile-menu-btn"
         onClick={() => setMenuOpen(!menuOpen)}

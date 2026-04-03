@@ -2,8 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { registerUser, getFirebaseErrorMessage, RTDB_PERMISSION_ERROR } from '../authService';
-import DatabaseSetupBanner from '../components/DatabaseSetupBanner';
+import { registerUser, getFirebaseErrorMessage } from '../authService';
 
 const steps = ['Identity', 'Availability', 'Specialization'];
 
@@ -20,7 +19,6 @@ export default function VolunteerRegister() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [showRulesGuide, setShowRulesGuide] = useState(true);
 
   const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const skillOptions = ['Education & Mentoring', 'Food Service', 'Healthcare Support', 'Digital Skills', 'Environmental Action', 'Elderly Care', 'Transportation'];
@@ -77,9 +75,6 @@ export default function VolunteerRegister() {
         setSubmitted(true);
         setTimeout(() => navigate('/volunteer/login'), 3000);
       } catch (error: any) {
-        if (error.code === RTDB_PERMISSION_ERROR) {
-          setShowRulesGuide(true);
-        }
         const errorMessage = getFirebaseErrorMessage(error.code);
         setSubmitError(errorMessage);
         alert(errorMessage);
@@ -256,7 +251,6 @@ export default function VolunteerRegister() {
 
             {/* Form Panel */}
             <div className="card-elevated animate-fade-up">
-              {showRulesGuide && <DatabaseSetupBanner />}
               {step === 0 && (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>

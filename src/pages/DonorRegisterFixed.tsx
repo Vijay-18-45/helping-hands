@@ -1,8 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { registerUser, getFirebaseErrorMessage, RTDB_PERMISSION_ERROR } from '../authService';
+import { registerUser, getFirebaseErrorMessage } from '../authService';
 import { Toast, useToast } from '../components/Toast';
-import DatabaseSetupBanner from '../components/DatabaseSetupBanner';
 
 export default function DonorRegisterFixed() {
   const navigate = useNavigate();
@@ -15,7 +14,6 @@ export default function DonorRegisterFixed() {
   });
   const [state, setState] = useState<'idle' | 'loading' | 'success'>('idle');
   const [error, setError] = useState('');
-  const [showRulesGuide, setShowRulesGuide] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +44,6 @@ export default function DonorRegisterFixed() {
       setState('success');
     } catch (err: any) {
       setState('idle');
-      if (err.code === RTDB_PERMISSION_ERROR) {
-        setShowRulesGuide(true);
-      }
       setError(getFirebaseErrorMessage(err.code));
     }
   };
@@ -112,8 +107,6 @@ export default function DonorRegisterFixed() {
               Start making a difference today. Track your donations and see your impact.
             </p>
           </div>
-
-          {showRulesGuide && <DatabaseSetupBanner />}
 
           {error && (
             <div style={{
