@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { ref, onValue, push, update } from 'firebase/database';
+import { ref, onValue, push, update, get } from 'firebase/database';
 import { rtdb } from '../firebaseConfig';
 import { logoutUser } from '../authService';
 import { useAuth } from '../context/AuthContext';
@@ -66,6 +66,7 @@ export default function RequestorDashboard() {
   const [activeSection, setActiveSection] = useState<'available' | 'myrequests'>('available');
   const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
   const [acceptedNotification, setAcceptedNotification] = useState<MyRequest | null>(null);
+  const [donationsMap, setDonationsMap] = useState<Record<string, Donation>>({});
 
   // Track previous statuses to detect changes in real-time
   const prevStatuses = useRef<Record<string, string>>({});
@@ -81,13 +82,18 @@ export default function RequestorDashboard() {
     const unsub = onValue(donationsRef, snap => {
       if (snap.exists()) {
         const data = snap.val();
-        const list: Donation[] = Object.entries(data)
-          .map(([id, val]) => ({ id, ...(val as Omit<Donation, 'id'>) }))
+        const all: Donation[] = Object.entries(data)
+          .map(([id, val]) => ({ id, ...(val as Omit<Donation, 'id'>) }));
+        const map: Record<string, Donation> = {};
+        for (const d of all) map[d.id] = d;
+        setDonationsMap(map);
+        const available = all
           .filter(d => d.status === 'available')
           .sort((a, b) => b.timestamp - a.timestamp);
-        setDonations(list);
+        setDonations(available);
       } else {
         setDonations([]);
+        setDonationsMap({});
       }
       setLoading(false);
     }, err => {
@@ -154,8 +160,24 @@ export default function RequestorDashboard() {
     }
     if (!requestingId || !user) return;
 
+    // Guard: prevent duplicate request for the same donation
+    const alreadyRequested = myRequests.some(r => r.donationId === requestingId);
+    if (alreadyRequested) {
+      addToast('You have already submitted a request for this donation.', 'error');
+      setRequestingId(null);
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Guard: verify donation is still "available" before submitting (stale UI protection)
+      const donationSnap = await get(ref(rtdb, `donations/${requestingId}`));
+      if (!donationSnap.exists() || donationSnap.val().status !== 'available') {
+        addToast('Sorry, this donation is no longer available. Someone else may have just requested it.', 'error');
+        setRequestingId(null);
+        return;
+      }
+
       await push(ref(rtdb, 'requests'), {
         donationId: requestingId,
         requestorId: user.uid,
@@ -181,6 +203,8 @@ export default function RequestorDashboard() {
 
   const acceptedCount = myRequests.filter(r => r.status === 'accepted').length;
   const pendingCount = myRequests.filter(r => r.status === 'pending').length;
+  // Set of donationIds the user has already requested (any status)
+  const requestedDonationIds = new Set(myRequests.map(r => r.donationId));
 
   return (
     <div className="dashboard-layout">
@@ -434,14 +458,21 @@ export default function RequestorDashboard() {
                           </div>
                         )}
 
-                        <button
-                          onClick={() => { setRequestingId(donation.id); setRequestForm({ requesterName: '', phone: '' }); setRequestLocation(null); }}
-                          className="btn btn-primary"
-                          style={{ width: '100%' }}
-                          disabled={!fresh}
-                        >
-                          {fresh ? 'Request Item' : 'Expired'}
-                        </button>
+                        {requestedDonationIds.has(donation.id) ? (
+                          <div style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-lg)', background: 'var(--success-soft)', color: 'var(--success)', fontWeight: 700, fontSize: '0.9375rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                            Already Requested
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setRequestingId(donation.id); setRequestForm({ requesterName: '', phone: '' }); setRequestLocation(null); }}
+                            className="btn btn-primary"
+                            style={{ width: '100%' }}
+                            disabled={!fresh}
+                          >
+                            {fresh ? 'Request Item' : 'Expired — Cannot Request'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -485,18 +516,29 @@ export default function RequestorDashboard() {
                           </div>
                         </div>
                       )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ fontWeight: 700 }}>Request #{req.id.slice(-6)}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.0625rem' }}>
+                            {donationsMap[req.donationId]?.title ?? `Donation #${req.donationId.slice(-6)}`}
+                          </div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>Request #{req.id.slice(-6)}</div>
+                        </div>
                         <span style={{
                           padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
                           background: isAccepted ? 'var(--success-soft)' : 'var(--primary-fixed)',
                           color: isAccepted ? 'var(--success)' : 'var(--primary)',
+                          flexShrink: 0, marginLeft: 12,
                         }}>
                           {isAccepted ? '✓ ACCEPTED' : 'PENDING'}
                         </span>
                       </div>
+                      {donationsMap[req.donationId]?.quantity && (
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)', marginBottom: 8 }}>
+                          <strong>Qty:</strong> {donationsMap[req.donationId].quantity}
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                        <span><strong>Name:</strong> {req.requesterName}</span>
+                        <span><strong>Your name:</strong> {req.requesterName}</span>
                         <span><strong>Phone:</strong> {req.phone}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--outline)', marginTop: 8 }}>

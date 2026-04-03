@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 import { rtdb } from '../firebaseConfig';
 import { logoutUser } from '../authService';
 import { useAuth } from '../context/AuthContext';
@@ -110,11 +110,25 @@ export default function VolunteerDashboard() {
     if (acceptingId) return;
     setAcceptingId(req.id);
     try {
+      // Race condition guard: verify request is still "pending" before accepting
+      const requestSnap = await get(ref(rtdb, `requests/${req.id}`));
+      if (!requestSnap.exists() || requestSnap.val().status !== 'pending') {
+        addToast('This request was already accepted by another volunteer.', 'error');
+        return;
+      }
+
+      const volunteerName = user?.email?.split('@')[0] ?? 'Volunteer';
       await update(ref(rtdb, `requests/${req.id}`), {
         status: 'accepted',
-        volunteerName: user?.email?.split('@')[0] ?? 'Volunteer',
+        volunteerName,
         acceptedAt: Date.now(),
       });
+
+      // Also mark the donation as fulfilled so it's clearly off the board
+      if (req.donationId) {
+        await update(ref(rtdb, `donations/${req.donationId}`), { status: 'fulfilled' });
+      }
+
       addToast(`Request accepted! You'll pick up "${req.donation?.title ?? 'the donation'}" for ${req.requesterName}.`, 'success');
     } catch {
       addToast('Failed to accept request. Please try again.', 'error');
@@ -124,7 +138,11 @@ export default function VolunteerDashboard() {
   };
 
   const availableDonations = donations;
-  const requestedItems = requests;
+  // Pending requests first, accepted ones below
+  const requestedItems = [
+    ...requests.filter(r => r.status === 'pending').sort((a, b) => a.timestamp - b.timestamp),
+    ...requests.filter(r => r.status !== 'pending').sort((a, b) => (b.acceptedAt ?? 0) - (a.acceptedAt ?? 0)),
+  ];
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
   return (
@@ -312,11 +330,23 @@ export default function VolunteerDashboard() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-                {requestedItems.map(req => {
+                {requestedItems.map((req) => {
                   const isAccepted = req.status === 'accepted';
+                  const firstAccepted = isAccepted && requestedItems.filter(r => r.status !== 'pending').indexOf(req) === 0 && pendingCount > 0;
                   const isPending = req.status === 'pending';
                   return (
-                    <div key={req.id} className="card" style={{ borderLeft: `4px solid ${isAccepted ? 'var(--success)' : 'var(--primary)'}` }}>
+                    <div key={req.id}>
+                    {firstAccepted && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                        <div style={{ flex: 1, height: 1, background: 'var(--outline-variant)' }} />
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                          Completed
+                        </span>
+                        <div style={{ flex: 1, height: 1, background: 'var(--outline-variant)' }} />
+                      </div>
+                    )}
+                    <div className="card" style={{ borderLeft: `4px solid ${isAccepted ? 'var(--success)' : 'var(--primary)'}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>
                           {req.donation?.title ?? 'Donation #' + req.donationId.slice(-6)}
@@ -432,6 +462,7 @@ export default function VolunteerDashboard() {
                           </a>
                         </div>
                       ) : null}
+                    </div>
                     </div>
                   );
                 })}
