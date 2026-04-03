@@ -178,6 +178,14 @@ export default function RequestorDashboard() {
         return;
       }
 
+      // Guard: verify donation is still fresh at submission time (modal may have been left open)
+      const donationData = donationSnap.val();
+      if (Date.now() >= donationData.timestamp + donationData.freshness * 3600000) {
+        addToast('Sorry, this food has expired and can no longer be requested.', 'error');
+        setRequestingId(null);
+        return;
+      }
+
       await push(ref(rtdb, 'requests'), {
         donationId: requestingId,
         requestorId: user.uid,
@@ -494,8 +502,10 @@ export default function RequestorDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {myRequests.map((req) => {
                   const isAccepted = req.status === 'accepted';
+                  const isRejected = req.status === 'rejected';
+                  const borderColor = isAccepted ? 'var(--success)' : isRejected ? 'var(--accent)' : 'var(--primary)';
                   return (
-                    <div key={req.id} className="card" style={{ borderLeft: `4px solid ${isAccepted ? 'var(--success)' : 'var(--primary)'}`, padding: '20px 24px' }}>
+                    <div key={req.id} className="card" style={{ borderLeft: `4px solid ${borderColor}`, padding: '20px 24px' }}>
                       {isAccepted && (
                         <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#00a65a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -514,6 +524,21 @@ export default function RequestorDashboard() {
                           </div>
                         </div>
                       )}
+                      {isRejected && (
+                        <div style={{ padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#9a3412', fontSize: '0.9375rem' }}>
+                              This donation was fulfilled by another request
+                            </div>
+                            <div style={{ color: '#9a3412', fontSize: '0.8125rem', marginTop: 2 }}>
+                              A volunteer accepted a different request for this item. Browse available food for other options.
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '1.0625rem' }}>
@@ -523,11 +548,11 @@ export default function RequestorDashboard() {
                         </div>
                         <span style={{
                           padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
-                          background: isAccepted ? 'var(--success-soft)' : 'var(--primary-fixed)',
-                          color: isAccepted ? 'var(--success)' : 'var(--primary)',
+                          background: isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
+                          color: isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
                           flexShrink: 0, marginLeft: 12,
                         }}>
-                          {isAccepted ? '✓ ACCEPTED' : 'PENDING'}
+                          {isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
                         </span>
                       </div>
                       {donationsMap[req.donationId]?.quantity && (

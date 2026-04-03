@@ -110,23 +110,44 @@ export default function VolunteerDashboard() {
     if (acceptingId) return;
     setAcceptingId(req.id);
     try {
-      // Race condition guard: verify request is still "pending" before accepting
+      // Guard: verify request is still "pending"
       const requestSnap = await get(ref(rtdb, `requests/${req.id}`));
       if (!requestSnap.exists() || requestSnap.val().status !== 'pending') {
         addToast('This request was already accepted by another volunteer.', 'error');
         return;
       }
 
+      // Guard: verify the donation is not already fulfilled (race condition between two volunteers)
+      if (req.donationId) {
+        const donationSnap = await get(ref(rtdb, `donations/${req.donationId}`));
+        if (!donationSnap.exists() || donationSnap.val().status === 'fulfilled') {
+          addToast('This donation has already been fulfilled by another volunteer.', 'error');
+          return;
+        }
+      }
+
       const volunteerName = user?.email?.split('@')[0] ?? 'Volunteer';
+      const acceptedAt = Date.now();
+
       await update(ref(rtdb, `requests/${req.id}`), {
         status: 'accepted',
         volunteerName,
-        acceptedAt: Date.now(),
+        acceptedAt,
       });
 
-      // Also mark the donation as fulfilled so it's clearly off the board
+      // Mark the donation as fulfilled
       if (req.donationId) {
         await update(ref(rtdb, `donations/${req.donationId}`), { status: 'fulfilled' });
+      }
+
+      // Auto-reject all other pending requests for the same donation (orphan cleanup)
+      const allRequestsSnap = await get(ref(rtdb, 'requests'));
+      if (allRequestsSnap.exists()) {
+        const allRequests = allRequestsSnap.val() as Record<string, any>;
+        const rejectPromises = Object.entries(allRequests)
+          .filter(([id, r]) => id !== req.id && r.donationId === req.donationId && r.status === 'pending')
+          .map(([id]) => update(ref(rtdb, `requests/${id}`), { status: 'rejected' }));
+        if (rejectPromises.length > 0) await Promise.all(rejectPromises);
       }
 
       addToast(`Request accepted! You'll pick up "${req.donation?.title ?? 'the donation'}" for ${req.requesterName}.`, 'success');
@@ -218,7 +239,7 @@ export default function VolunteerDashboard() {
             {[
               { label: 'Available Donations', value: availableDonations.length, color: 'var(--primary)', iconPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z' },
               { label: 'Pending Requests', value: pendingCount, color: 'var(--accent)', iconPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-              { label: 'Accepted', value: requests.filter(r => r.status === 'accepted').length, color: 'var(--success)', iconPath: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z' },
+              { label: 'My Accepted', value: requests.filter(r => r.status === 'accepted' && r.volunteerName === (user?.email?.split('@')[0] ?? '')).length, color: 'var(--success)', iconPath: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z' },
             ].map(s => (
               <div key={s.label} className="card" style={{ padding: 24 }}>
                 <span style={{ width: 44, height: 44, background: `${s.color}15`, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, marginBottom: 12 }}>
@@ -332,21 +353,22 @@ export default function VolunteerDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
                 {requestedItems.map((req) => {
                   const isAccepted = req.status === 'accepted';
-                  const firstAccepted = isAccepted && requestedItems.filter(r => r.status !== 'pending').indexOf(req) === 0 && pendingCount > 0;
+                  const isRejected = req.status === 'rejected';
                   const isPending = req.status === 'pending';
+                  const firstNonPending = !isPending && requestedItems.filter(r => r.status !== 'pending').indexOf(req) === 0 && pendingCount > 0;
+                  const cardBorder = isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)';
                   return (
                     <div key={req.id}>
-                    {firstAccepted && (
+                    {firstNonPending && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                         <div style={{ flex: 1, height: 1, background: 'var(--outline-variant)' }} />
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                          Completed
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Resolved
                         </span>
                         <div style={{ flex: 1, height: 1, background: 'var(--outline-variant)' }} />
                       </div>
                     )}
-                    <div className="card" style={{ borderLeft: `4px solid ${isAccepted ? 'var(--success)' : 'var(--primary)'}` }}>
+                    <div className="card" style={{ borderLeft: `4px solid ${cardBorder}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>
                           {req.donation?.title ?? 'Donation #' + req.donationId.slice(-6)}
@@ -354,10 +376,10 @@ export default function VolunteerDashboard() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
                           <span style={{
                             padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
-                            background: isAccepted ? 'var(--success-soft)' : 'var(--primary-fixed)',
-                            color: isAccepted ? 'var(--success)' : 'var(--primary)',
+                            background: isAccepted ? 'var(--success-soft)' : isRejected ? '#fff7ed' : 'var(--primary-fixed)',
+                            color: isAccepted ? 'var(--success)' : isRejected ? '#f97316' : 'var(--primary)',
                           }}>
-                            {isAccepted ? '✓ ACCEPTED' : (req.status ?? 'pending').toUpperCase()}
+                            {isAccepted ? '✓ ACCEPTED' : isRejected ? '✗ NOT FULFILLED' : 'PENDING'}
                           </span>
                           {isPending && (
                             <button
