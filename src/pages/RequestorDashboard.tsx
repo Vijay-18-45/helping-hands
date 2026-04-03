@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ref, onValue, push, update } from 'firebase/database';
 import { rtdb } from '../firebaseConfig';
 import { logoutUser } from '../authService';
@@ -20,6 +20,19 @@ interface Donation {
   timestamp: number;
   status: string;
   location?: { lat: number; lng: number };
+}
+
+interface MyRequest {
+  id: string;
+  donationId: string;
+  requestorId: string;
+  requesterName: string;
+  phone: string;
+  location?: { lat: number; lng: number };
+  status: string;
+  timestamp: number;
+  volunteerName?: string;
+  acceptedAt?: number;
 }
 
 interface RequestForm {
@@ -51,7 +64,12 @@ export default function RequestorDashboard() {
   const [requestLocation, setRequestLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState<'available' | 'myrequests'>('available');
-  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
+  const [acceptedNotification, setAcceptedNotification] = useState<MyRequest | null>(null);
+
+  // Track previous statuses to detect changes in real-time
+  const prevStatuses = useRef<Record<string, string>>({});
+  const isFirstLoad = useRef(true);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -84,12 +102,35 @@ export default function RequestorDashboard() {
     if (!user) return;
     const requestsRef = ref(rtdb, 'requests');
     const unsub = onValue(requestsRef, snap => {
-      if (!snap.exists()) { setMyRequests([]); return; }
+      if (!snap.exists()) {
+        setMyRequests([]);
+        prevStatuses.current = {};
+        isFirstLoad.current = false;
+        return;
+      }
       const data = snap.val();
-      const list = Object.entries(data)
-        .map(([id, val]) => ({ id, ...(val as any) }))
-        .filter((r: any) => r.requestorId === user.uid)
-        .sort((a: any, b: any) => b.timestamp - a.timestamp);
+      const list: MyRequest[] = Object.entries(data)
+        .map(([id, val]) => ({ id, ...(val as Omit<MyRequest, 'id'>) }))
+        .filter((r) => r.requestorId === user.uid)
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+      // Detect newly accepted requests (skip on first load)
+      if (!isFirstLoad.current) {
+        for (const req of list) {
+          const prev = prevStatuses.current[req.id];
+          if (prev && prev !== 'accepted' && req.status === 'accepted') {
+            setAcceptedNotification(req);
+            break;
+          }
+        }
+      }
+
+      // Update tracked statuses
+      const newStatuses: Record<string, string> = {};
+      for (const req of list) newStatuses[req.id] = req.status;
+      prevStatuses.current = newStatuses;
+      isFirstLoad.current = false;
+
       setMyRequests(list);
     });
     return () => unsub();
@@ -125,21 +166,95 @@ export default function RequestorDashboard() {
         timestamp: Date.now(),
       });
       await update(ref(rtdb, `donations/${requestingId}`), { status: 'requested' });
-      addToast('Request submitted successfully!', 'success');
+      addToast('Request submitted! A volunteer will contact you soon.', 'success');
       setRequestingId(null);
       setRequestForm({ requesterName: '', phone: '' });
       setRequestLocation(null);
-    } catch {
+      setActiveSection('myrequests');
+    } catch (err) {
+      console.error(err);
       addToast('Failed to submit request. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const acceptedCount = myRequests.filter(r => r.status === 'accepted').length;
+  const pendingCount = myRequests.filter(r => r.status === 'pending').length;
+
   return (
     <div className="dashboard-layout">
       <Toast toasts={toasts} onDismiss={dismissToast} />
 
+      {/* Volunteer Accepted Notification Popup */}
+      {acceptedNotification && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 24, padding: '52px 44px',
+            maxWidth: 460, width: '100%', textAlign: 'center',
+            boxShadow: '0 32px 64px rgba(0,0,0,0.25)',
+            animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+          }}>
+            <div style={{
+              width: 88, height: 88, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #00a65a, #34d399)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 24px',
+              boxShadow: '0 12px 32px rgba(0,166,90,0.35)',
+              animation: 'pulse 2s ease-in-out infinite',
+            }}>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="white">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+              </svg>
+            </div>
+
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 12, color: '#00a65a' }}>
+              Great news! 🎉
+            </h2>
+            <p style={{ fontSize: '1.0625rem', color: '#374151', lineHeight: 1.7, marginBottom: 8 }}>
+              A volunteer has accepted your request!
+            </p>
+            <p style={{ fontSize: '0.9375rem', color: '#6b7280', lineHeight: 1.7, marginBottom: 8 }}>
+              {acceptedNotification.volunteerName
+                ? <><strong>{acceptedNotification.volunteerName}</strong> will be picking up your donation and delivering it to you.</>
+                : 'A volunteer will be picking up your donation and delivering it to you.'
+              }
+            </p>
+            <div style={{ padding: '16px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, marginBottom: 28, fontSize: '0.875rem', color: '#166534' }}>
+              <strong>Item:</strong> {acceptedNotification.requesterName}'s request<br />
+              {acceptedNotification.acceptedAt && (
+                <span><strong>Accepted at:</strong> {new Date(acceptedNotification.acceptedAt).toLocaleTimeString()}</span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => { setAcceptedNotification(null); setActiveSection('myrequests'); }}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: 12, border: 'none',
+                  background: 'linear-gradient(135deg, #00a65a, #34d399)',
+                  color: 'white', fontWeight: 700, fontSize: '1rem',
+                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,166,90,0.35)',
+                }}
+              >
+                View My Requests
+              </button>
+              <button
+                onClick={() => setAcceptedNotification(null)}
+                style={{ padding: '14px 20px', borderRadius: 12, border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Form Modal */}
       {requestingId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
@@ -219,6 +334,12 @@ export default function RequestorDashboard() {
             style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>
             <span className="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span>
             My Requests
+            {pendingCount > 0 && (
+              <span style={{ marginLeft: 'auto', background: 'var(--primary)', color: 'white', borderRadius: 99, fontSize: '0.6875rem', fontWeight: 700, padding: '2px 7px' }}>{pendingCount}</span>
+            )}
+            {acceptedCount > 0 && (
+              <span style={{ marginLeft: pendingCount > 0 ? 4 : 'auto', background: 'var(--success)', color: 'white', borderRadius: 99, fontSize: '0.6875rem', fontWeight: 700, padding: '2px 7px' }}>{acceptedCount} ✓</span>
+            )}
           </button>
           <Link to="/" className="sidebar-link">
             <span className="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
@@ -236,7 +357,7 @@ export default function RequestorDashboard() {
       </aside>
 
       <main className="dashboard-content">
-        <header style={{ marginBottom: 40 }}>
+        <header style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ color: 'var(--on-surface-variant)', marginBottom: 4 }}>Welcome, <strong>{user?.email?.split('@')[0]}</strong></p>
@@ -249,7 +370,7 @@ export default function RequestorDashboard() {
         <DatabaseSetupBanner />
 
         {activeSection === 'available' ? (
-          <section>
+          <section style={{ marginTop: 24 }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
               Available Donations
@@ -329,7 +450,7 @@ export default function RequestorDashboard() {
             )}
           </section>
         ) : (
-          <section>
+          <section style={{ marginTop: 24 }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--primary)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
               My Requests
@@ -342,30 +463,66 @@ export default function RequestorDashboard() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {myRequests.map((req: any) => (
-                  <div key={req.id} className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <div style={{ fontWeight: 700 }}>Request ID: {req.id.slice(-6)}</div>
-                      <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700, background: req.status === 'pending' ? 'var(--primary-fixed)' : 'var(--success-soft)', color: req.status === 'pending' ? 'var(--primary)' : 'var(--success)' }}>
-                        {req.status?.toUpperCase() ?? 'PENDING'}
-                      </span>
+                {myRequests.map((req) => {
+                  const isAccepted = req.status === 'accepted';
+                  return (
+                    <div key={req.id} className="card" style={{ borderLeft: `4px solid ${isAccepted ? 'var(--success)' : 'var(--primary)'}`, padding: '20px 24px' }}>
+                      {isAccepted && (
+                        <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#00a65a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.9375rem' }}>
+                              A volunteer has accepted your request!
+                            </div>
+                            {req.volunteerName && (
+                              <div style={{ color: '#166534', fontSize: '0.8125rem', marginTop: 2 }}>
+                                <strong>{req.volunteerName}</strong> will coordinate pickup & delivery.
+                                {req.acceptedAt && ` Accepted at ${new Date(req.acceptedAt).toLocaleTimeString()}.`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ fontWeight: 700 }}>Request #{req.id.slice(-6)}</div>
+                        <span style={{
+                          padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
+                          background: isAccepted ? 'var(--success-soft)' : 'var(--primary-fixed)',
+                          color: isAccepted ? 'var(--success)' : 'var(--primary)',
+                        }}>
+                          {isAccepted ? '✓ ACCEPTED' : 'PENDING'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                        <span><strong>Name:</strong> {req.requesterName}</span>
+                        <span><strong>Phone:</strong> {req.phone}</span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--outline)', marginTop: 8 }}>
+                        Submitted: {new Date(req.timestamp).toLocaleString()}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', display: 'flex', gap: 20 }}>
-                      <span><strong>Name:</strong> {req.requesterName}</span>
-                      <span><strong>Phone:</strong> {req.phone}</span>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--outline)', marginTop: 8 }}>
-                      Submitted: {new Date(req.timestamp).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
         )}
       </main>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes mapSpin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes mapSpin { to { transform: rotate(360deg); } }
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }
