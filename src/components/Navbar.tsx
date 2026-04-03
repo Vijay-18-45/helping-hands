@@ -26,7 +26,9 @@ export default function Navbar({ transparent }: NavbarProps) {
     ? '/donor/dashboard'
     : role === 'volunteer'
       ? '/volunteer/dashboard'
-      : null;
+      : role === 'requestor'
+        ? '/requestor/dashboard'
+        : null;
 
   const handleLogout = async () => {
     await logoutUser();
@@ -65,6 +67,7 @@ export default function Navbar({ transparent }: NavbarProps) {
         ) : !loading ? (
           <>
             <Link to="/donor/login" className="btn btn-ghost btn-sm">Donor Login</Link>
+            <Link to="/requestor/login" className="btn btn-ghost btn-sm">Request Food</Link>
             <Link to="/volunteer/login" className="btn btn-primary btn-sm">Get Started</Link>
           </>
         ) : null}

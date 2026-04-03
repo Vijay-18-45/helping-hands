@@ -11,7 +11,7 @@ import {
 import { ref, set, get } from 'firebase/database';
 import { auth, rtdb } from './firebaseConfig';
 
-export type UserRole = 'donor' | 'volunteer';
+export type UserRole = 'donor' | 'volunteer' | 'requestor';
 
 export const RTDB_PERMISSION_ERROR = 'rtdb/permission-denied';
 

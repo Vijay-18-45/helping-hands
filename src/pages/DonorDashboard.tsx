@@ -5,6 +5,7 @@ import { rtdb } from '../firebaseConfig';
 import { logoutUser } from '../authService';
 import { useAuth } from '../context/AuthContext';
 import { Toast, useToast } from '../components/Toast';
+import MapPicker from '../components/MapPicker';
 
 interface DonationForm {
   title: string;
@@ -22,6 +23,7 @@ export default function DonorDashboard() {
   const [form, setForm] = useState<DonationForm>({
     title: '', description: '', quantity: '', freshness: '', image: '',
   });
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,10 +45,25 @@ export default function DonorDashboard() {
     if (file && file.type.startsWith('image/')) handleImageFile(file);
   };
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      addToast('Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => addToast('Unable to detect location. Please click on the map.', 'error')
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.quantity || !form.freshness) {
       addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    if (!location) {
+      addToast('Please select a pickup location on the map.', 'error');
       return;
     }
     if (!user) return;
@@ -59,10 +76,13 @@ export default function DonorDashboard() {
         quantity: form.quantity,
         freshness: Number(form.freshness),
         image: form.image,
+        location,
+        status: 'available',
         timestamp: Date.now(),
       });
       addToast('Donation submitted successfully! Thank you.', 'success');
       setForm({ title: '', description: '', quantity: '', freshness: '', image: '' });
+      setLocation(null);
     } catch {
       addToast('Failed to submit donation. Please try again.', 'error');
     } finally {
@@ -152,7 +172,7 @@ export default function DonorDashboard() {
             Create a New Donation
           </h2>
 
-          <div className="card" style={{ maxWidth: 680 }}>
+          <div className="card" style={{ maxWidth: 720 }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
               <div className="form-group">
@@ -232,9 +252,27 @@ export default function DonorDashboard() {
                 )}
               </div>
 
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <label className="form-label" style={{ margin: 0 }}>Pickup Location * <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--on-surface-variant)' }}>(click on map to set)</span></label>
+                  <button type="button" onClick={handleDetectLocation}
+                    style={{ background: 'none', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: 'var(--radius-md)', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06z"/></svg>
+                    Auto-detect
+                  </button>
+                </div>
+                <MapPicker location={location} onChange={setLocation} height={280} />
+                {location && (
+                  <div style={{ marginTop: 8, fontSize: '0.8125rem', color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--success)"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Location selected: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                  </div>
+                )}
+              </div>
+
               <button type="submit" className="btn btn-primary btn-lg"
-                disabled={submitting || !form.title || !form.quantity || !form.freshness}
-                style={{ width: '100%', opacity: (!form.title || !form.quantity || !form.freshness) ? 0.5 : 1 }}>
+                disabled={submitting || !form.title || !form.quantity || !form.freshness || !location}
+                style={{ width: '100%', opacity: (!form.title || !form.quantity || !form.freshness || !location) ? 0.5 : 1 }}>
                 {submitting ? (
                   <>
                     <span style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />

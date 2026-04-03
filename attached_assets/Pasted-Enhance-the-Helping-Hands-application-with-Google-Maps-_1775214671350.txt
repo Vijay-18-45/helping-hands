@@ -1,0 +1,183 @@
+Enhance the Helping Hands application with Google Maps integration, donation flow, request system, and volunteer coordination using Firebase Realtime Database.
+
+-----------------------------------
+🔥 GOOGLE MAPS SETUP
+-----------------------------------
+- Use @react-google-maps/api
+- API Key: AIzaSyBhJerwaPCqwEK7suSoBW0sBj7dQZ5sN4Q
+- Default map center: India (Vijayawada)
+- Enable:
+  - Click to select location
+  - Marker display
+
+-----------------------------------
+👤 ROLES
+-----------------------------------
+1. Donor → adds food donation
+2. Requestor (needy user) → requests food
+3. Volunteer → manages pickup & delivery
+
+-----------------------------------
+📦 DONOR DASHBOARD
+-----------------------------------
+
+Add donation form with:
+- Food Title
+- Description
+- Quantity
+- Freshness (hours)
+- Image upload
+- Location picker (Google Map)
+
+MAP BEHAVIOR:
+- User clicks on map → capture lat, lng
+- Show marker at selected location
+
+ON SUBMIT:
+Save to Firebase:
+donations/{donationId} → {
+  donorId,
+  title,
+  description,
+  quantity,
+  freshness,
+  image,
+  location: { lat, lng },
+  status: "available",
+  timestamp
+}
+
+-----------------------------------
+🧑‍🤝‍🧑 REQUESTOR INTERFACE (NEW PAGE)
+-----------------------------------
+
+Create page: "Available Donations"
+
+- Fetch all donations where status = "available"
+- Display as cards + map markers
+
+Each card shows:
+- Food image
+- Title
+- Quantity
+- Freshness
+- Location (map preview optional)
+
+ADD "Request Item" BUTTON
+
+-----------------------------------
+📩 REQUEST FLOW
+-----------------------------------
+
+When user clicks "Request":
+
+Show form:
+- Name
+- Mobile Number
+- Location (map picker OR auto-detect)
+
+Save in Firebase:
+requests/{requestId} → {
+  donationId,
+  requesterName,
+  phone,
+  location: { lat, lng },
+  status: "pending",
+  timestamp
+}
+
+Also update donation:
+donations/{donationId}/status = "requested"
+
+-----------------------------------
+🤝 VOLUNTEER DASHBOARD
+-----------------------------------
+
+SECTION 1: Available Donations
+- Show all donations (status: available)
+- Display:
+  - Image
+  - Food details
+  - Donor location (map marker)
+
+SECTION 2: Requested Items
+- Fetch requests
+- Join with donation data
+
+Display:
+- Food details
+- Donor location
+- Requestor details:
+  - Name
+  - Phone
+  - Location
+
+-----------------------------------
+🗺️ MAP FEATURES (IMPORTANT)
+-----------------------------------
+
+For Volunteer:
+- Show both locations:
+  1. Donor location
+  2. Requestor location
+
+- Display markers:
+  - Donor → green marker
+  - Requestor → red marker
+
+OPTIONAL:
+- Draw route between both locations
+
+-----------------------------------
+📍 LOCATION STORAGE FORMAT
+-----------------------------------
+
+Always store as:
+location: {
+  lat: number,
+  lng: number
+}
+
+-----------------------------------
+🔐 SECURITY (IMPORTANT)
+-----------------------------------
+
+- Only donor can create donations
+- Only requestor can create requests
+- Volunteer can read all data
+
+-----------------------------------
+🎨 UI REQUIREMENTS
+-----------------------------------
+
+- Card-based layout
+- Map inside:
+  - Donor form
+  - Request form
+  - Volunteer dashboard
+
+- Show:
+  - "No donations available"
+  - "No requests yet"
+
+-----------------------------------
+⚙️ EXTRA FEATURES (OPTIONAL BUT GOOD)
+-----------------------------------
+
+- Auto-detect location using browser (navigator.geolocation)
+- "Get Directions" button → open Google Maps
+- Show distance between donor & requestor
+
+-----------------------------------
+🎯 FINAL EXPECTATION
+-----------------------------------
+
+- Donor submits food + location
+- Requestor sees available items and requests
+- Volunteer sees:
+  - donation location
+  - requestor location
+  - full details
+
+- Complete real-world flow:
+  Donor → Request → Volunteer → Pickup & Delivery

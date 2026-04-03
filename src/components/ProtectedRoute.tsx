@@ -7,6 +7,12 @@ interface Props {
   requiredRole: UserRole;
 }
 
+const loginPaths: Record<UserRole, string> = {
+  donor: '/donor/login',
+  volunteer: '/volunteer/login',
+  requestor: '/requestor/login',
+};
+
 export default function ProtectedRoute({ children, requiredRole }: Props) {
   const { user, role, loading } = useAuth();
 
@@ -27,7 +33,7 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
   }
 
   if (!user || !user.emailVerified) {
-    return <Navigate to={requiredRole === 'donor' ? '/donor/login' : '/volunteer/login'} replace />;
+    return <Navigate to={loginPaths[requiredRole]} replace />;
   }
 
   if (role !== requiredRole) {
