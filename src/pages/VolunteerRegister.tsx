@@ -18,7 +18,7 @@ export default function VolunteerRegister() {
     foodService: '',
   });
   const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [submitError, setSubmitError] = useState<string>('');
 
   const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const skillOptions = ['Education & Mentoring', 'Food Service', 'Healthcare Support', 'Digital Skills', 'Environmental Action', 'Elderly Care', 'Transportation'];
@@ -404,6 +404,11 @@ export default function VolunteerRegister() {
                 </div>
               )}
 
+              {submitError && (
+                <div style={{ marginTop: 16, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', fontSize: '0.875rem' }}>
+                  {submitError}
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid rgba(195,198,215,0.2)' }}>
                 <button type="button" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}
                   className="btn btn-secondary" style={{ opacity: step === 0 ? 0.4 : 1 }}>

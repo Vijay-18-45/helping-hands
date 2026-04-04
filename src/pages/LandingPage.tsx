@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { ScrollReveal, StaggerContainer, ScrollProgressBar } from '../components/ScrollReveal';
-import { smoothScrollTo } from '../components/ScrollAnimations';
 
 const stats = [
   { value: '$1.2M+', label: 'Total Donated' },

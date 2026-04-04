@@ -1,10 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { registerUser, getFirebaseErrorMessage } from '../authService';
 import { Toast, useToast } from '../components/Toast';
 
 export default function DonorRegisterFixed() {
-  const navigate = useNavigate();
   const { toasts, addToast, dismissToast } = useToast();
   const [form, setForm] = useState({
     email: '',

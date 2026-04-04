@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import Footer from '../components/Footer';
 import { loginUser, getUserRole, logoutUser, sendVerificationEmail, sendPasswordReset, getFirebaseErrorMessage } from '../authService';
 import { useAuth } from '../context/AuthContext';
 

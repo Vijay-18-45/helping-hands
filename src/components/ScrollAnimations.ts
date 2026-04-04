@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, RefObject } from 'react';
+import { useEffect, useRef, useState, RefObject } from 'react';
 
 // ─── Scroll Animation Hook ─────────────────────────────────────────────
 interface ScrollAnimationOptions {

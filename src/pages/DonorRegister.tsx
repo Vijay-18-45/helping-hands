@@ -1,9 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { registerDonor, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
+import { registerUser, sendVerificationEmail, getFirebaseErrorMessage } from '../authService';
 
 export default function DonorRegister() {
-  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -86,11 +85,7 @@ export default function DonorRegister() {
     try {
       // Register donor with Firebase
       console.log('🔄 Starting registration...');
-      await registerDonor(form.email, form.password, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        phone: form.phone || '',
-      });
+      await registerUser(form.email, form.password, 'donor');
       console.log('✅ Registration successful!');
       
       // Try to send email verification
