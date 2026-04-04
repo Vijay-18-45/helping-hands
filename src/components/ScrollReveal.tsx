@@ -1,4 +1,5 @@
-import React, { ReactNode, CSSProperties } from 'react';
+import React from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { useScrollAnimation, useParallax } from './ScrollAnimations';
 
 // ─── Animation Types ───────────────────────────────────────────────────
@@ -20,7 +21,7 @@ interface ScrollRevealProps {
   threshold?: number;
   className?: string;
   style?: CSSProperties;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
 }
 
 // Animation configurations
@@ -83,11 +84,8 @@ export function ScrollReveal({
     willChange: 'opacity, transform',
   };
 
-  return React.createElement(
-    Component,
-    { ref, className, style: combinedStyle },
-    children
-  );
+  const Tag = Component as React.ElementType;
+  return <Tag ref={ref} className={className} style={combinedStyle}>{children}</Tag>;
 }
 
 // ─── Parallax Container ────────────────────────────────────────────────
