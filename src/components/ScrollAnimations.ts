@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 
 // ─── Scroll Animation Hook ─────────────────────────────────────────────
 interface ScrollAnimationOptions {
@@ -9,7 +10,7 @@ interface ScrollAnimationOptions {
 
 export function useScrollAnimation<T extends HTMLElement>(
   options: ScrollAnimationOptions = {}
-): [RefObject<T>, boolean] {
+): [RefObject<T | null>, boolean] {
   const { threshold = 0.1, rootMargin = '0px 0px -50px 0px', triggerOnce = true } = options;
   const ref = useRef<T>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -55,7 +56,7 @@ interface ParallaxOptions {
 
 export function useParallax<T extends HTMLElement>(
   options: ParallaxOptions = {}
-): [RefObject<T>, number] {
+): [RefObject<T | null>, number] {
   const { speed = 0.5, disabled = false } = options;
   const ref = useRef<T>(null);
   const [offset, setOffset] = useState(0);
